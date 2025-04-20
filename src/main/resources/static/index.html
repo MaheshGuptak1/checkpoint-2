@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Prevent auto-submission -->
+    <script>
+        // Prevent any form from auto-submitting
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                });
+            });
+        });
+    </script>
+    
     <div id="app">
         <!-- Navigation bar -->
         <nav id="navbar">

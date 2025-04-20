@@ -2,6 +2,7 @@ package com.pxp.SQLite.demo.service;
 
 import com.pxp.SQLite.demo.entity.CartItem;
 import com.pxp.SQLite.demo.entity.Product;
+import com.pxp.SQLite.demo.entity.Order;
 import com.pxp.SQLite.demo.repository.CartItemRepository;
 import com.pxp.SQLite.demo.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ public class CartService {
 
     @Autowired
     private ProductRepository productRepository;
+    
+    @Autowired
+    private OrderService orderService;
 
     public String addToCart(CartItem cartItem) {
         try {
@@ -144,7 +148,13 @@ public class CartService {
                 cartItemRepository.save(item);
             }
             
-            return "Checkout completed successfully";
+            // Create order from checked out items
+            Order order = orderService.createOrderFromCart(userId);
+            if (order == null) {
+                return "Error creating order";
+            }
+            
+            return "Checkout completed successfully. Order #" + order.getId() + " created with invoice number " + order.getInvoiceNumber();
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

@@ -47,100 +47,132 @@ document.addEventListener('DOMContentLoaded', function() {
         updateUIForLoggedInUser();
     }
     
-    // Event Listeners - Navigation
-    homeLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(homePage);
-        updateActiveLink(homeLink);
-    });
+    // Event Listeners - Navigation - Only add if element exists
+    if (homeLink) {
+        homeLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage(homePage);
+            updateActiveLink(homeLink);
+        });
+    }
     
-    productsLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (!currentUser) {
+    if (productsLink) {
+        productsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                showPage(loginPage);
+                updateActiveLink(loginLink);
+                return;
+            }
+            loadProducts();
+            showPage(productsPage);
+            updateActiveLink(productsLink);
+        });
+    }
+    
+    if (cartLink) {
+        cartLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                showPage(loginPage);
+                updateActiveLink(loginLink);
+                return;
+            }
+            loadCartItems();
+            showPage(cartPage);
+            updateActiveLink(cartLink);
+        });
+    }
+    
+    if (loginLink) {
+        loginLink.addEventListener('click', function(e) {
+            e.preventDefault();
             showPage(loginPage);
             updateActiveLink(loginLink);
-            return;
-        }
-        loadProducts();
-        showPage(productsPage);
-        updateActiveLink(productsLink);
-    });
+        });
+    }
     
-    cartLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (!currentUser) {
+    if (registerLink) {
+        registerLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage(registerPage);
+            updateActiveLink(registerLink);
+        });
+    }
+    
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    }
+    
+    // Event Listeners - Forms - Only add if element exists
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            login();
+        });
+    }
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            register();
+        });
+    }
+    
+    if (goToRegister) {
+        goToRegister.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPage(registerPage);
+            updateActiveLink(registerLink);
+        });
+    }
+    
+    if (goToLogin) {
+        goToLogin.addEventListener('click', function(e) {
+            e.preventDefault();
             showPage(loginPage);
             updateActiveLink(loginLink);
-            return;
-        }
-        loadCartItems();
-        showPage(cartPage);
-        updateActiveLink(cartLink);
-    });
+        });
+    }
     
-    loginLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(loginPage);
-        updateActiveLink(loginLink);
-    });
+    // Event Listeners - Cart - Only add if element exists
+    if (clearCartBtn) {
+        clearCartBtn.addEventListener('click', clearCart);
+    }
     
-    registerLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(registerPage);
-        updateActiveLink(registerLink);
-    });
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+            prepareCheckout();
+            showPage(checkoutPage);
+        });
+    }
     
-    logoutLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        logout();
-    });
+    if (browseProductsLink) {
+        browseProductsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            loadProducts();
+            showPage(productsPage);
+            updateActiveLink(productsLink);
+        });
+    }
     
-    // Event Listeners - Forms
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        login();
-    });
+    // Event Listeners - Checkout - Only add if element exists
+    if (backToCartBtn) {
+        backToCartBtn.addEventListener('click', function() {
+            showPage(cartPage);
+            updateActiveLink(cartLink);
+        });
+    }
     
-    registerForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        register();
-    });
-    
-    goToRegister.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(registerPage);
-        updateActiveLink(registerLink);
-    });
-    
-    goToLogin.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(loginPage);
-        updateActiveLink(loginLink);
-    });
-    
-    // Event Listeners - Cart
-    clearCartBtn.addEventListener('click', clearCart);
-    checkoutBtn.addEventListener('click', function() {
-        prepareCheckout();
-        showPage(checkoutPage);
-    });
-    browseProductsLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        loadProducts();
-        showPage(productsPage);
-        updateActiveLink(productsLink);
-    });
-    
-    // Event Listeners - Checkout
-    backToCartBtn.addEventListener('click', function() {
-        showPage(cartPage);
-        updateActiveLink(cartLink);
-    });
-    
-    paymentForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        processPayment();
-    });
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            processPayment();
+        });
+    }
     
     // Functions - Navigation
     function showPage(page) {

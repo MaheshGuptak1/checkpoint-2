@@ -61,3 +61,4 @@ The frontend is located in the `src/main/resources/static` directory and consist
   - CSS3
   - JavaScript (ES6+) "# checkpoint-1-" 
 "# checkpoint-1-" 
+"# checkpoint-2" 
