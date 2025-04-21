@@ -174,6 +174,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Add event listener for Razorpay payment button
+    const payWithRazorpay = document.getElementById('payWithRazorpay');
+    if (payWithRazorpay) {
+        payWithRazorpay.addEventListener('click', function() {
+            processPayment();
+        });
+    }
+    
     // Functions - Navigation
     function showPage(page) {
         // Hide all pages
@@ -216,16 +224,16 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(user)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
+            return response.json().then(data => {
+                // Return both the response status and data
+                return { status: response.status, data: data };
+            });
         })
-        .then(data => {
-            if (data && data.id) {
+        .then(result => {
+            if (result.status === 200 && result.data.user) {
                 // Successful login
-                currentUser = data;
-                localStorage.setItem('currentUser', JSON.stringify(data));
+                currentUser = result.data.user;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
                 // Update UI
                 updateUIForLoggedInUser();
@@ -238,7 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Reset form
                 loginForm.reset();
             } else {
-                alert('Invalid username or password');
+                // Login failed
+                alert(result.data.message || 'Invalid username or password');
             }
         })
         .catch(error => {
@@ -271,20 +280,20 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(user)
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.text();
+            return response.json().then(data => {
+                // Return both the response status and data
+                return { status: response.status, data: data };
+            });
         })
-        .then(message => {
-            alert(message);
-            if (message.includes('success')) {
-                // Redirect to login page
+        .then(result => {
+            if (result.status === 201 && result.data.user) {
+                // Successful registration
+                alert('Registration successful! Please login.');
                 showPage(loginPage);
-                updateActiveLink(loginLink);
-                
-                // Reset form
-                registerForm.reset();
+                document.getElementById('registerForm').reset();
+            } else {
+                // Registration failed
+                alert(result.data.error || result.data.message || 'Registration failed. Please try again.');
             }
         })
         .catch(error => {
@@ -398,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-price">$${product.price.toFixed(2)}</div>
                     <div class="product-quantity">
                         <label for="quantity-${product.id}">Quantity:</label>
-                        <input type="number" id="quantity-${product.id}" min="1" max="${product.stockQuantity}" value="1">
+                        <input type="number" id="quantity-${product.id}" min="1" max="${product.stockQuantity}" placeholder="Quantity" required>
                     </div>
                     <button class="add-to-cart" data-id="${product.id}" data-name="${product.name}" data-price="${product.price}">
                         Add to Cart
@@ -411,7 +420,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add event listener to the add to cart button
             const addToCartBtn = productCard.querySelector('.add-to-cart');
             addToCartBtn.addEventListener('click', function() {
-                const quantity = parseInt(document.getElementById(`quantity-${product.id}`).value);
+                const quantityInput = document.getElementById(`quantity-${product.id}`);
+                const quantity = parseInt(quantityInput.value);
+                
+                if (isNaN(quantity) || quantity < 1) {
+                    alert('Please enter a valid quantity');
+                    return;
+                }
+                
                 addToCart(product.id, product.name, product.price, quantity);
             });
         });
@@ -425,8 +441,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (quantity < 1) {
-            alert('Please select a valid quantity');
+        if (isNaN(quantity) || quantity < 1) {
+            alert('Please enter a valid quantity');
             return;
         }
         
@@ -456,6 +472,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (message.includes('success')) {
                 // Update cart count
                 loadCartCount();
+                // Clear the quantity input
+                const quantityInput = document.getElementById(`quantity-${productId}`);
+                if (quantityInput) {
+                    quantityInput.value = '';
+                }
             }
         })
         .catch(error => {
@@ -671,88 +692,208 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Functions - Checkout
     function prepareCheckout() {
-        if (!cartItemsArray || cartItemsArray.length === 0) {
-            alert('Your cart is empty');
-            showPage(cartPage);
-            updateActiveLink(cartLink);
+        // Get cart items from the DOM table
+        const cartItemsTable = document.getElementById('cartItems');
+        
+        if (!cartItemsTable || cartItemsTable.children.length === 0) {
+            alert('Your cart is empty. Please add items to your cart before checkout.');
             return;
         }
+
+        // Get total price from cart total text
+        const cartTotalText = document.getElementById('cartTotal').textContent;
+        const totalPrice = parseFloat(cartTotalText.replace('$', ''));
         
-        orderItems.innerHTML = '';
-        let total = 0;
+        // Update order items display
+        const orderItemsContainer = document.getElementById('orderItems');
+        orderItemsContainer.innerHTML = '';
         
-        cartItemsArray.forEach(item => {
-            const itemTotal = item.productPrice * item.quantity;
-            total += itemTotal;
+        // Copy items from cart to order summary
+        for (let i = 0; i < cartItemsTable.children.length; i++) {
+            const row = cartItemsTable.children[i];
+            const productName = row.cells[0].textContent;
+            const price = row.cells[1].textContent;
+            const quantity = row.querySelector('.quantity-input').value;
+            const subtotal = row.cells[3].textContent;
             
             const orderItem = document.createElement('div');
             orderItem.className = 'order-item';
             orderItem.innerHTML = `
-                <div>${item.productName} x ${item.quantity}</div>
-                <div>$${itemTotal.toFixed(2)}</div>
+                <span>${productName} (${quantity})</span>
+                <span>${subtotal}</span>
             `;
             
-            orderItems.appendChild(orderItem);
-        });
+            orderItemsContainer.appendChild(orderItem);
+        }
         
-        orderTotal.textContent = `$${total.toFixed(2)}`;
+        // Set order total
+        document.getElementById('orderTotal').textContent = cartTotalText;
+        
+        // Show checkout page
+        showPage(checkoutPage);
+    }
+    
+    function calculateTotalPrice() {
+        // Get total price from cart total text
+        const cartTotalText = document.getElementById('cartTotal').textContent;
+        return parseFloat(cartTotalText.replace('$', ''));
     }
     
     function processPayment() {
-        const cardName = document.getElementById('cardName').value;
-        const cardNumber = document.getElementById('cardNumber').value;
-        const expiryDate = document.getElementById('expiryDate').value;
-        const cvv = document.getElementById('cvv').value;
+        const name = document.getElementById('customerName').value;
+        const email = document.getElementById('customerEmail').value;
+        const phone = document.getElementById('customerPhone').value;
         
-        if (!cardName || !cardNumber || !expiryDate || !cvv) {
-            alert('Please fill in all payment details');
+        if (!name || !email || !phone) {
+            alert('Please fill in all required fields');
             return;
         }
         
-        // Here you would normally validate the card details
+        const totalAmount = calculateTotalPrice(); // API expects amount in rupees, we'll convert to paise in the backend
         
-        // Process checkout
-        fetch(`/checkout/${currentUser.id}`, {
-            method: 'POST'
+        // Create order on backend
+        fetch('/payment/create-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                amount: totalAmount
+            })
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error('Failed to create order');
             }
-            return response.text();
+            return response.json();
         })
-        .then(message => {
-            alert(message);
-            if (message.includes('success')) {
-                // Reset payment form
-                paymentForm.reset();
-                
-                // Update cart count
-                loadCartCount();
-                
-                // Show success message and redirect to products
-                showPage(homePage);
-                updateActiveLink(homeLink);
-                
-                // Update home page with success message
-                homePage.innerHTML = `
-                    <h1>Thank You for Your Order!</h1>
-                    <p>Your order has been successfully placed.</p>
-                    <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                        <button id="continueShopping">Continue Shopping</button>
-                    </div>
-                `;
-                
-                document.getElementById('continueShopping').addEventListener('click', function() {
-                    loadProducts();
-                    showPage(productsPage);
-                    updateActiveLink(productsLink);
-                });
+        .then(data => {
+            // Check if Razorpay is available
+            if (typeof Razorpay === 'undefined') {
+                throw new Error('Razorpay SDK not loaded. Check your internet connection.');
+            }
+            
+            const options = {
+                key: data.keyId,
+                amount: data.amount,
+                currency: data.currency || 'INR',
+                name: 'E-Commerce Store',
+                description: 'Purchase Payment',
+                order_id: data.orderId,
+                handler: function (response) {
+                    verifyPayment(response);
+                },
+                prefill: {
+                    name: name,
+                    email: email,
+                    contact: phone
+                },
+                theme: {
+                    color: '#3395ff'
+                }
+            };
+            
+            const rzp = new Razorpay(options);
+            rzp.open();
+        })
+        .catch(error => {
+            console.error('Payment error:', error);
+            alert('Payment initialization failed: ' + error.message);
+        });
+    }
+    
+    function verifyPayment(response) {
+        fetch('/payment/verify-payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Payment verification failed');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Handle successful payment
+                completeOrder();
+            } else {
+                throw new Error(data.message || 'Payment verification failed');
             }
         })
         .catch(error => {
-            console.error('Error processing payment:', error);
-            alert('Error processing payment. Please try again.');
+            console.error('Verification error:', error);
+            alert('Payment verification failed: ' + error.message);
+        });
+    }
+    
+    function completeOrder() {
+        if (!currentUser) {
+            alert('Please log in to complete your order');
+            showPage(loginPage);
+            updateActiveLink(loginLink);
+            return;
+        }
+    
+        // Get cart items from DOM to create order items
+        const cartItemsTable = document.getElementById('cartItems');
+        const orderItems = [];
+
+        for (let i = 0; i < cartItemsTable.children.length; i++) {
+            const row = cartItemsTable.children[i];
+            const productId = row.querySelector('.remove-item').getAttribute('data-id');
+            const productName = row.cells[0].textContent;
+            const productPrice = parseFloat(row.cells[1].textContent.replace('$', ''));
+            const quantity = parseInt(row.querySelector('.quantity-input').value);
+            const subtotal = parseFloat(row.cells[3].textContent.replace('$', ''));
+            
+            orderItems.push({
+                productId: productId,
+                productName: productName,
+                productPrice: productPrice,
+                quantity: quantity,
+                subtotal: subtotal
+            });
+        }
+
+        // Send order to backend
+        fetch(`/checkout/${currentUser.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                items: orderItems,
+                totalAmount: calculateTotalPrice()
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Order processing failed');
+            }
+            return response.text();
+        })
+        .then(data => {
+            // Clear cart items on success
+            clearCart();
+            
+            // Show success message
+            alert('Order placed successfully! Thank you for your purchase.');
+            
+            // Go back to home page
+            showPage(homePage);
+            updateActiveLink(homeLink);
+        })
+        .catch(error => {
+            console.error('Order processing error:', error);
+            alert('Order processing failed: ' + error.message);
         });
     }
 }); 

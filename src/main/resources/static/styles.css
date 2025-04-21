@@ -379,4 +379,25 @@ th {
     .nav-links {
         gap: 10px;
     }
+}
+
+/* Razorpay Button */
+.razorpay-btn {
+    background-color: #3395ff;
+    color: white;
+    font-weight: bold;
+    border: none;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 4px;
+}
+
+.razorpay-btn:hover {
+    background-color: #2d89e5;
+}
+
+.razorpay-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(51, 149, 255, 0.5);
 } 

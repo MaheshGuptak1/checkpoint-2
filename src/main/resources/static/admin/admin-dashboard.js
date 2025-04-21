@@ -1,197 +1,245 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Check if admin is logged in
-    const storedAdmin = localStorage.getItem('adminUser');
-    if (!storedAdmin) {
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    if (!adminUser.id) {
         window.location.href = 'index.html';
         return;
     }
+
+    // Elements - Navigation
+    const navLinks = document.querySelectorAll('.menu li');
+    const pages = document.querySelectorAll('.page');
+    const pageTitle = document.getElementById('page-title');
     
-    const adminUser = JSON.parse(storedAdmin);
-    document.getElementById('adminName').textContent = adminUser.username;
+    // Elements - Dashboard
+    const totalProductsEl = document.getElementById('totalProducts');
+    const totalOrdersEl = document.getElementById('totalOrders');
+    const totalCustomersEl = document.getElementById('totalCustomers');
+    const totalRevenueEl = document.getElementById('totalRevenue');
+    const recentOrdersList = document.getElementById('recent-orders-table');
     
-    // DOM Elements - Navigation
-    const dashboardLink = document.getElementById('dashboardLink');
-    const productsLink = document.getElementById('productsLink');
-    const usersLink = document.getElementById('usersLink');
-    const ordersLink = document.getElementById('ordersLink');
-    const logoutLink = document.getElementById('logoutLink');
-    
-    // DOM Elements - Pages
-    const pageTitle = document.getElementById('pageTitle');
-    const dashboardPage = document.getElementById('dashboardPage');
-    const productsPage = document.getElementById('productsPage');
-    const usersPage = document.getElementById('usersPage');
-    const ordersPage = document.getElementById('ordersPage');
-    
-    // DOM Elements - Dashboard
-    const totalUsers = document.getElementById('totalUsers');
-    const totalProducts = document.getElementById('totalProducts');
-    const totalOrders = document.getElementById('totalOrders');
-    const totalRevenue = document.getElementById('totalRevenue');
-    const recentOrdersList = document.getElementById('recentOrdersList');
-    
-    // DOM Elements - Products
+    // Elements - Products
     const productsList = document.getElementById('productsList');
     const addProductBtn = document.getElementById('addProductBtn');
     const productModal = document.getElementById('productModal');
-    const productForm = document.getElementById('productForm');
     const productFormTitle = document.getElementById('productFormTitle');
     const saveProductBtn = document.getElementById('saveProductBtn');
-    const cancelProductBtn = document.getElementById('cancelProductBtn');
+    const productFilter = document.getElementById('productFilter');
     
-    // DOM Elements - Users
+    // Elements - Users
     const usersList = document.getElementById('usersList');
     const userDetailsModal = document.getElementById('userDetailsModal');
     const userDetails = document.getElementById('userDetails');
     const userOrdersList = document.getElementById('userOrdersList');
+    const userFilter = document.getElementById('userFilter');
     
-    // DOM Elements - Orders
+    // Elements - Orders
     const ordersList = document.getElementById('ordersList');
-    const orderStatusFilter = document.getElementById('orderStatusFilter');
     const orderDetailsModal = document.getElementById('orderDetailsModal');
     const orderDetails = document.getElementById('orderDetails');
     const orderItemsList = document.getElementById('orderItemsList');
-    const orderTotal = document.getElementById('orderTotal');
+    const orderStatusFilter = document.getElementById('orderStatusFilter');
     const orderStatus = document.getElementById('orderStatus');
     const updateStatusBtn = document.getElementById('updateStatusBtn');
     const deliveryDate = document.getElementById('deliveryDate');
     const updateDeliveryBtn = document.getElementById('updateDeliveryBtn');
+    const orderTotal = document.getElementById('orderTotal');
+
+    // Set admin name
+    document.getElementById('adminName').textContent = adminUser.username || 'Admin';
     
-    // Close buttons for modals
-    const closeButtons = document.querySelectorAll('.close');
-    closeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            modal.style.display = 'none';
-        });
-    });
-    
-    // Event Listeners - Navigation
-    dashboardLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(dashboardPage, 'Dashboard');
-        loadDashboardData();
-        updateActiveLink(dashboardLink);
-    });
-    
-    productsLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(productsPage, 'Products');
-        loadProducts();
-        updateActiveLink(productsLink);
-    });
-    
-    usersLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(usersPage, 'Users');
-        loadUsers();
-        updateActiveLink(usersLink);
-    });
-    
-    ordersLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        showPage(ordersPage, 'Orders');
-        loadOrders();
-        updateActiveLink(ordersLink);
-    });
-    
-    logoutLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        localStorage.removeItem('adminUser');
-        window.location.href = 'index.html';
-    });
-    
-    // Event Listeners - Products
-    addProductBtn.addEventListener('click', function() {
-        productFormTitle.textContent = 'Add New Product';
-        productForm.reset();
-        document.getElementById('productId').value = '';
-        productModal.style.display = 'block';
-    });
-    
-    cancelProductBtn.addEventListener('click', function() {
-        productModal.style.display = 'none';
-    });
-    
-    productForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveProduct();
-    });
-    
-    // Event Listeners - Orders
-    orderStatusFilter.addEventListener('change', function() {
-        loadOrders(this.value);
-    });
-    
-    updateStatusBtn.addEventListener('click', function() {
-        updateOrderStatus();
-    });
-    
-    updateDeliveryBtn.addEventListener('click', function() {
-        updateDeliveryDate();
-    });
-    
-    // Load initial data
+    // Initialize
+    initializeEventListeners();
+    showPage('dashboard-page', 'Dashboard');
     loadDashboardData();
     
-    // Functions - Navigation
-    function showPage(page, title) {
-        // Hide all pages
-        dashboardPage.classList.add('hidden');
-        productsPage.classList.add('hidden');
-        usersPage.classList.add('hidden');
-        ordersPage.classList.add('hidden');
+    function initializeEventListeners() {
+        // Navigation
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                const pageId = this.getAttribute('data-page');
+                showPage(pageId, this.textContent.trim());
+                updateActiveLink(this);
+            });
+        });
         
-        // Show selected page
-        page.classList.remove('hidden');
-        pageTitle.textContent = title;
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        
+        // Modal close buttons
+        document.querySelectorAll('.close, .close-modal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal) modal.style.display = 'none';
+            });
+        });
+        
+        // Products
+        if (addProductBtn) {
+            addProductBtn.addEventListener('click', function() {
+                productFormTitle.textContent = 'Add New Product';
+                document.getElementById('productId').value = '';
+                document.getElementById('productName').value = '';
+                document.getElementById('productDescription').value = '';
+                document.getElementById('productPrice').value = '';
+                document.getElementById('productStock').value = '';
+                productModal.style.display = 'block';
+            });
+        }
+        
+        if (saveProductBtn) {
+            saveProductBtn.addEventListener('click', saveProduct);
+        }
+        
+        if (productFilter) {
+            productFilter.addEventListener('change', function() {
+                loadProducts(this.value);
+            });
+        }
+        
+        // Orders
+        if (orderStatusFilter) {
+            orderStatusFilter.addEventListener('change', function() {
+                loadOrders(this.value);
+            });
+        }
+        
+        if (updateStatusBtn) {
+            updateStatusBtn.addEventListener('click', updateOrderStatus);
+        }
+        
+        if (updateDeliveryBtn) {
+            updateDeliveryBtn.addEventListener('click', updateDeliveryDate);
+        }
+        
+        // Users
+        if (userFilter) {
+            userFilter.addEventListener('change', function() {
+                loadUsers(this.value);
+            });
+        }
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            document.querySelectorAll('.modal').forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    function logout() {
+        localStorage.removeItem('adminUser');
+        window.location.href = 'index.html';
+    }
+    
+    function showPage(pageId, title) {
+        console.log('Showing page:', pageId);
+        // Hide all pages
+        pages.forEach(page => page.classList.remove('active'));
+        
+        // Show the selected page
+        const activePage = document.getElementById(pageId);
+        if (activePage) {
+            activePage.classList.add('active');
+            
+            // Set page title
+            if (pageTitle) pageTitle.textContent = title;
+            
+            // Load data based on the page
+            if (pageId === 'dashboard-page') {
+                loadDashboardData();
+            } else if (pageId === 'products-page') {
+                loadProducts();
+            } else if (pageId === 'customers-page') {
+                loadUsers();
+            } else if (pageId === 'orders-page') {
+                loadOrders();
+            }
+        } else {
+            console.error('Page not found:', pageId);
+        }
     }
     
     function updateActiveLink(link) {
         // Remove active class from all links
-        dashboardLink.classList.remove('active');
-        productsLink.classList.remove('active');
-        usersLink.classList.remove('active');
-        ordersLink.classList.remove('active');
+        navLinks.forEach(navLink => navLink.classList.remove('active'));
         
-        // Add active class to selected link
+        // Add active class to the clicked link
         link.classList.add('active');
     }
     
     // Functions - Dashboard
     function loadDashboardData() {
-        // Load counts and statistics
-        Promise.all([
-            fetch('/admin/users').then(response => response.json()),
-            fetch('/getallproducts').then(response => response.json()),
-            fetch('/admin/orders').then(response => response.json())
-        ])
-        .then(([users, products, orders]) => {
-            // Update counts
-            totalUsers.textContent = users.length;
-            totalProducts.textContent = products.length;
-            totalOrders.textContent = orders.length;
-            
-            // Calculate total revenue
-            const revenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-            totalRevenue.textContent = '$' + revenue.toFixed(2);
-            
-            // Display recent orders (last 5)
-            const recentOrders = orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)).slice(0, 5);
-            displayRecentOrders(recentOrders);
-        })
-        .catch(error => {
-            console.error('Error loading dashboard data:', error);
-        });
+        // Show loading indicators
+        totalProductsEl.textContent = 'Loading...';
+        totalOrdersEl.textContent = 'Loading...';
+        totalCustomersEl.textContent = 'Loading...';
+        totalRevenueEl.textContent = 'Loading...';
+        
+        // Load summary data
+        fetch('/admin/dashboard/summary')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Dashboard data:", data);
+                // Update dashboard counts with real data
+                totalProductsEl.textContent = data.totalProducts || '0';
+                totalOrdersEl.textContent = data.totalOrders || '0';
+                totalCustomersEl.textContent = data.totalCustomers || '0';
+                
+                // Format revenue with 2 decimal places
+                const revenue = parseFloat(data.totalRevenue) || 0;
+                totalRevenueEl.textContent = '$' + revenue.toFixed(2);
+            })
+            .catch(error => {
+                console.error('Error loading dashboard data:', error);
+                // Set default values on error
+                totalProductsEl.textContent = '0';
+                totalOrdersEl.textContent = '0';
+                totalCustomersEl.textContent = '0';
+                totalRevenueEl.textContent = '$0.00';
+            });
+        
+        // Load recent orders
+        recentOrdersList.innerHTML = '<tr><td colspan="6">Loading orders...</td></tr>';
+        
+        fetch('/admin/orders')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(orders => {
+                console.log("Recent orders:", orders);
+                // Display recent orders (limited to the most recent 5)
+                if (orders && orders.length > 0) {
+                    // Sort by date (newest first) and take first 5
+                    const recentOrders = orders
+                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                        .slice(0, 5);
+                    displayRecentOrders(recentOrders);
+                } else {
+                    recentOrdersList.innerHTML = '<tr><td colspan="6">No orders found</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recent orders:', error);
+                recentOrdersList.innerHTML = '<tr><td colspan="6">Error loading orders</td></tr>';
+            });
     }
     
     function displayRecentOrders(orders) {
         recentOrdersList.innerHTML = '';
         
-        if (orders.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5">No orders found</td>';
-            recentOrdersList.appendChild(row);
+        if (!orders || orders.length === 0) {
+            recentOrdersList.innerHTML = '<tr><td colspan="6">No recent orders found</td></tr>';
             return;
         }
         
@@ -199,21 +247,35 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${order.id}</td>
-                <td>${order.userName}</td>
+                <td>${order.userName || 'N/A'}</td>
                 <td>${new Date(order.orderDate).toLocaleDateString()}</td>
                 <td>$${order.totalAmount.toFixed(2)}</td>
                 <td><span class="status-badge ${order.status.toLowerCase()}">${order.status}</span></td>
+                <td><button class="view-btn" data-id="${order.id}">View</button></td>
             `;
             recentOrdersList.appendChild(row);
+            
+            // Add event listener to view button
+            row.querySelector('.view-btn').addEventListener('click', function() {
+                // Show orders page and then view the order
+                showPage('orders-page', 'Orders');
+                updateActiveLink(document.querySelector('.menu li[data-page="orders-page"]'));
+                viewOrderDetails(order.id);
+            });
         });
     }
     
     // Functions - Products
-    function loadProducts() {
+    function loadProducts(filter = '') {
         // Show loading indicator
         productsList.innerHTML = '<tr><td colspan="6">Loading products...</td></tr>';
         
-        fetch('/getallproducts')
+        let url = '/getallproducts';
+        if (filter) {
+            url += `?filter=${encodeURIComponent(filter)}`;
+        }
+        
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -221,6 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(products => {
+                console.log("Loaded products:", products);
                 displayProducts(products);
             })
             .catch(error => {
@@ -232,10 +295,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayProducts(products) {
         productsList.innerHTML = '';
         
-        if (products.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="6">No products found</td>';
-            productsList.appendChild(row);
+        if (!products || products.length === 0) {
+            productsList.innerHTML = '<tr><td colspan="6">No products found</td></tr>';
             return;
         }
         
@@ -254,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             productsList.appendChild(row);
             
-            // Add event listeners for buttons
+            // Add event listeners
             row.querySelector('.edit-btn').addEventListener('click', function() {
                 editProduct(product);
             });
@@ -423,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Functions - Users
-    function loadUsers() {
+    function loadUsers(filter = '') {
         fetch('/admin/users')
             .then(response => {
                 if (!response.ok) {
@@ -471,18 +532,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function viewUserDetails(userId) {
         // Get user details
+        userDetails.innerHTML = '<p>Loading user details...</p>';
+        userOrdersList.innerHTML = '<tr><td colspan="5">Loading order history...</td></tr>';
+        userDetailsModal.style.display = 'block';
+        
         fetch(`/admin/users/${userId}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error(`Failed to fetch user details: ${response.status}`);
                 }
                 return response.json();
             })
             .then(user => {
+                // Display basic user details
                 userDetails.innerHTML = `
                     <p><strong>ID:</strong> ${user.id}</p>
-                    <p><strong>Username:</strong> ${user.username}</p>
-                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Username:</strong> ${user.username || 'Not available'}</p>
+                    <p><strong>Email:</strong> ${user.email || 'Not available'}</p>
                 `;
                 
                 // Get user orders
@@ -490,17 +556,17 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error(`Failed to fetch user orders: ${response.status}`);
                 }
                 return response.json();
             })
             .then(orders => {
                 displayUserOrders(orders);
-                userDetailsModal.style.display = 'block';
             })
             .catch(error => {
                 console.error('Error loading user details:', error);
-                alert('Error loading user details. Please try again.');
+                userDetails.innerHTML = `<p class="error-message">Error loading user details: ${error.message}</p>`;
+                userOrdersList.innerHTML = '<tr><td colspan="5">Could not load order history</td></tr>';
             });
     }
     
@@ -605,64 +671,64 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return response.json();
             })
-            .then(order => {
-                // Format and display order details
-                const formattedOrderDate = new Date(order.orderDate).toLocaleDateString();
-                const formattedDeliveryDate = order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not set';
+            .then(data => {
+                // Format dates properly
+                const orderDate = data.orderDate ? new Date(data.orderDate + 'T00:00:00') : null;
+                const expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate + 'T00:00:00') : null;
                 
+                const formattedOrderDate = orderDate ? orderDate.toLocaleDateString() : 'Not set';
+                const formattedDeliveryDate = expectedDeliveryDate ? expectedDeliveryDate.toLocaleDateString() : 'Not set';
+                
+                // Update order details display
                 orderDetails.innerHTML = `
                     <div class="detail-row">
                         <span class="detail-label">Order ID:</span>
-                        <span class="detail-value">${order.id}</span>
+                        <span class="detail-value">${data.id}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Customer:</span>
-                        <span class="detail-value">${order.userName}</span>
+                        <span class="detail-value">${data.userName || 'Not available'}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Email:</span>
-                        <span class="detail-value">${order.userEmail || 'Not available'}</span>
+                        <span class="detail-value">${data.userEmail || 'Not available'}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Order Date:</span>
                         <span class="detail-value">${formattedOrderDate}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Delivery Date:</span>
+                        <span class="detail-label">Expected Delivery:</span>
                         <span class="detail-value">${formattedDeliveryDate}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Status:</span>
-                        <span class="detail-value status-badge ${order.status.toLowerCase()}">${order.status}</span>
+                        <span class="detail-value status-badge ${data.status.toLowerCase()}">${data.status}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Shipping Address:</span>
-                        <span class="detail-value">${order.shippingAddress || 'Not available'}</span>
+                        <span class="detail-label">Invoice Number:</span>
+                        <span class="detail-value">${data.invoiceNumber || 'Not available'}</span>
                     </div>
                 `;
                 
                 // Set the current value for the status dropdown and delivery date
-                document.getElementById('orderStatus').value = order.status;
-                if (order.deliveryDate) {
-                    // Convert date to YYYY-MM-DD format for input[type=date]
-                    const dateObj = new Date(order.deliveryDate);
-                    const year = dateObj.getFullYear();
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    document.getElementById('deliveryDate').value = `${year}-${month}-${day}`;
+                document.getElementById('orderStatus').value = data.status;
+                if (data.expectedDeliveryDate) {
+                    // Format is already YYYY-MM-DD from the backend
+                    document.getElementById('deliveryDate').value = data.expectedDeliveryDate;
                 } else {
                     document.getElementById('deliveryDate').value = '';
                 }
                 
                 // Update order total
-                orderTotal.textContent = `$${order.totalAmount.toFixed(2)}`;
+                orderTotal.textContent = `$${data.totalAmount.toFixed(2)}`;
                 
                 // Display order items
-                displayOrderItems(order.orderItems || []);
+                displayOrderItems(data.orderItems || []);
                 
                 // Store order ID for status update
-                document.getElementById('updateStatusBtn').dataset.orderId = order.id;
-                document.getElementById('updateDeliveryBtn').dataset.orderId = order.id;
+                document.getElementById('updateStatusBtn').dataset.orderId = data.id;
+                document.getElementById('updateDeliveryBtn').dataset.orderId = data.id;
             })
             .catch(error => {
                 console.error('Error loading order details:', error);
@@ -673,21 +739,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function displayOrderItems(items) {
         orderItemsList.innerHTML = '';
+        
+        if (!items || items.length === 0) {
+            orderItemsList.innerHTML = '<tr><td colspan="4">No items in this order</td></tr>';
+            return;
+        }
+        
         let total = 0;
         
         items.forEach(item => {
+            const subtotal = item.subTotal || (item.productPrice * item.quantity);
+            total += subtotal;
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${item.productName}</td>
                 <td>$${item.productPrice.toFixed(2)}</td>
                 <td>${item.quantity}</td>
-                <td>$${item.subTotal.toFixed(2)}</td>
+                <td>$${subtotal.toFixed(2)}</td>
             `;
             orderItemsList.appendChild(row);
-            total += item.subTotal;
         });
         
-        orderTotal.textContent = '$' + total.toFixed(2);
+        // Update the total if needed
+        if (Math.abs(total - parseFloat(orderTotal.textContent.replace('$', ''))) > 0.01) {
+            console.warn('Order total mismatch between items total and order total');
+        }
     }
     
     function updateOrderStatus() {

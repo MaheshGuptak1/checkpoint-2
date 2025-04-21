@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Commerce System</title>
+    <title>E-Commerce Store</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
     <!-- Prevent auto-submission -->
@@ -148,28 +151,60 @@
                             <h3>Payment Information</h3>
                             <form id="paymentForm">
                                 <div class="form-group">
-                                    <label for="cardName">Name on Card:</label>
-                                    <input type="text" id="cardName" required>
+                                    <label for="customerName">Full Name:</label>
+                                    <input type="text" id="customerName" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cardNumber">Card Number:</label>
-                                    <input type="text" id="cardNumber" required pattern="[0-9]{16}" placeholder="16 digits">
+                                    <label for="customerEmail">Email:</label>
+                                    <input type="email" id="customerEmail" required>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group half">
-                                        <label for="expiryDate">Expiry Date:</label>
-                                        <input type="text" id="expiryDate" required placeholder="MM/YY">
-                                    </div>
-                                    <div class="form-group half">
-                                        <label for="cvv">CVV:</label>
-                                        <input type="text" id="cvv" required pattern="[0-9]{3,4}" placeholder="3-4 digits">
-                                    </div>
+                                <div class="form-group">
+                                    <label for="customerPhone">Phone:</label>
+                                    <input type="text" id="customerPhone" pattern="[0-9]{10}" title="Please enter a valid 10-digit phone number" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="customerAddress">Shipping Address:</label>
+                                    <textarea id="customerAddress" rows="3" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="customerPincode">Pincode:</label>
+                                    <input type="text" id="customerPincode" pattern="[0-9]{6}" title="Please enter a valid 6-digit pincode" required>
+                                </div>
+                                <div class="form-group">
+                                    <p><strong>Expected Delivery Date: </strong><span id="expectedDeliveryDate"></span></p>
                                 </div>
                                 <div class="button-group">
                                     <button type="button" id="backToCartBtn">Back to Cart</button>
-                                    <button type="submit" id="placeOrderBtn">Place Order</button>
+                                    <button type="button" id="payWithRazorpay" class="razorpay-btn">Pay with Razorpay</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Order confirmation page -->
+                <div id="orderConfirmationPage" class="page hidden">
+                    <h2>Order Confirmation</h2>
+                    <div class="confirmation-container">
+                        <div class="confirmation-message">
+                            <h3>Thank you for your order!</h3>
+                            <p>Your order has been placed successfully. You will receive a confirmation email shortly.</p>
+                        </div>
+                        <div class="order-details">
+                            <h3>Order Details</h3>
+                            <p><strong>Order Number: </strong><span id="confirmOrderNumber"></span></p>
+                            <p><strong>Order Date: </strong><span id="confirmOrderDate"></span></p>
+                            <p><strong>Expected Delivery: </strong><span id="confirmDeliveryDate"></span></p>
+                            <p><strong>Shipping Address: </strong><span id="confirmShippingAddress"></span></p>
+                            <div id="confirmOrderItems">
+                                <!-- Order items will be dynamically added here -->
+                            </div>
+                            <div class="order-total">
+                                <p><strong>Total Amount: </strong><span id="confirmOrderTotal"></span></p>
+                            </div>
+                        </div>
+                        <div class="button-group" style="justify-content: center; margin-top: 20px;">
+                            <button id="returnToShoppingBtn">Continue Shopping</button>
                         </div>
                     </div>
                 </div>

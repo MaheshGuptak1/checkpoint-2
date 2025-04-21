@@ -21,6 +21,13 @@ public class UserService {
             if (existingUser != null) {
                 return "Username already exists";
             }
+            
+            // Check if email already exists
+            User existingEmail = userRepository.findByEmail(user.getEmail());
+            if (existingEmail != null) {
+                return "Email already exists";
+            }
+            
             userRepository.save(user);
             return "User registered successfully";
         } catch (Exception e) {
